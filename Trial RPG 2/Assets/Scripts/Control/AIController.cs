@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using RPG.Combat;
 using RPG.Core;
+using RPG.Movement;
 
 namespace RPG.Control
 {
@@ -10,16 +11,24 @@ namespace RPG.Control
     {
         [SerializeField]
         float chaseDistance = 5f;
+        [SerializeField]
+        float suspicionTime = 5f;
 
         Fighter fighter;
         Health health;
+        Mover mover;
         GameObject player;
 
+        Vector3 guardPosition;
+        float timeSinceLastSawPlayer = Mathf.Infinity;
         private void Start()
         {
             fighter = GetComponent<Fighter>();
             health = GetComponent<Health>();
             player = GameObject.FindWithTag("Player");
+            mover = GetComponent<Mover>();
+
+            guardPosition = transform.position;
         }
 
         private void Update()
@@ -28,14 +37,37 @@ namespace RPG.Control
 
             if (InAttackRangeOfPlayer() && fighter.CanAttack(player))
             {
-                fighter.Attack(player);
+                timeSinceLastSawPlayer = 0;
+                AttackBehavior();
+            }
+            else if (timeSinceLastSawPlayer < suspicionTime)
+            {
+                SuspicionBehavior();
+
             }
             else
             {
-                fighter.Cancel();
+                GuardBehavior();
             }
+            timeSinceLastSawPlayer += Time.deltaTime;
 
         }
+
+        private void GuardBehavior()
+        {
+            mover.StartMoveAction(guardPosition);
+        }
+
+        private void SuspicionBehavior()
+        {
+            GetComponent<ActionScheduler>().CancelCurrentAction();
+        }
+
+        private void AttackBehavior()
+        {
+            fighter.Attack(player);
+        }
+
         private bool InAttackRangeOfPlayer()
         {
             float distanceToPlayer = Vector3.Distance(player.transform.position, transform.position);
